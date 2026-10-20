@@ -24,6 +24,8 @@ import CollectorRouteScreen from '../collector/CollectorRouteScreen';
 import CollectorAccountScreen from '../collector/CollectorAccountScreen';
 import ReportProblemScreen from '../collector/ReportProblemScreen';
 import MoreScreen from '../collector/MoreScreen';
+import EmergencyScreen from '../collector/EmergencyScreen';
+import EmergencyDetailScreen from '../collector/EmergencyDetailScreen';
 import HistoryScreen from '../collector/HistoryScreen';
 import CollectorAnnouncementsScreen from '../collector/CollectorAnnouncementsScreen';
 import { CollectorServicesProvider, useCollectorServices } from '../collector/CollectorServices';
@@ -44,17 +46,21 @@ const ICONS = {
   Week: ['calendar', 'calendar-outline'],
   Map: ['map', 'map-outline'],
   ReportProblem: ['warning', 'warning-outline'],
+  Emergency: ['alert-circle', 'alert-circle-outline'],
   More: ['menu', 'menu-outline'],
 };
 
 const tabOptions = ({ route }) => ({
   headerShown: false,
-  tabBarActiveTintColor: colors.primary,
-  tabBarInactiveTintColor: colors.muted,
-  tabBarLabelStyle: { fontSize: 13, fontWeight: '700' },
-  tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
-  tabBarIcon: ({ color, size, focused }) => (
-    <Ionicons name={ICONS[route.name][focused ? 0 : 1]} size={size} color={color} />
+  tabBarActiveTintColor: colors.primaryDark,
+  tabBarInactiveTintColor: colors.faint,
+  tabBarLabelStyle: { fontSize: 12, fontWeight: '700' },
+  tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.line },
+  tabBarBadgeStyle: { backgroundColor: colors.danger, fontSize: 11, fontWeight: '800' },
+  tabBarIcon: ({ color, focused }) => (
+    <View style={{ width: 50, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: focused ? colors.primaryLight : 'transparent' }}>
+      <Ionicons name={ICONS[route.name][focused ? 0 : 1]} size={21} color={color} />
+    </View>
   ),
 });
 
@@ -79,18 +85,29 @@ function CollectorMore() {
       <MoreStack.Screen name="Announcements" component={CollectorAnnouncementsScreen} />
       <MoreStack.Screen name="History" component={HistoryScreen} options={{ title: 'My history' }} />
       <MoreStack.Screen name="Account" component={CollectorAccountScreen} />
+      <MoreStack.Screen name="ReportProblem" component={ReportProblemScreen} options={{ title: 'Report a problem' }} />
     </MoreStack.Navigator>
   );
 }
 
+const EmergencyStack = createNativeStackNavigator();
+function CollectorEmergency() {
+  return (
+    <EmergencyStack.Navigator screenOptions={{ ...subHeader, headerBackTitle: 'Emergency' }}>
+      <EmergencyStack.Screen name="EmergencyList" component={EmergencyScreen} options={{ headerShown: false }} />
+      <EmergencyStack.Screen name="EmergencyDetail" component={EmergencyDetailScreen} options={{ title: 'Emergency pickup' }} />
+    </EmergencyStack.Navigator>
+  );
+}
+
 function CollectorTabsInner() {
-  const { unread } = useCollectorServices();
+  const { unread, openEmergencies } = useCollectorServices();
   return (
     <Tab.Navigator screenOptions={tabOptions}>
       <Tab.Screen name="Today" component={TodayScreen} />
       <Tab.Screen name="Week" component={CollectorScheduleScreen} />
+      <Tab.Screen name="Emergency" component={CollectorEmergency} options={{ tabBarBadge: openEmergencies || undefined }} />
       <Tab.Screen name="Map" component={CollectorRouteScreen} />
-      <Tab.Screen name="ReportProblem" component={ReportProblemScreen} options={{ title: 'Report' }} />
       <Tab.Screen name="More" component={CollectorMore} options={{ tabBarBadge: unread || undefined }} />
     </Tab.Navigator>
   );

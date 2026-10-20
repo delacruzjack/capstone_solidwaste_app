@@ -2,7 +2,7 @@
 //
 // * The last day loaded from the server is kept on the phone, so Today still shows the stops
 //   when there is no signal.
-// * Taps that need the server (Done, Couldn't collect, Undo, emergency status, shift, problem
+// * Taps that need the server (Done, Not collected, Undo, emergency status, shift, problem
 //   reports) are saved in an outbox with the time they were tapped, shown on screen right away,
 //   and sent in order when the phone is back online. The server keeps the tap time (up to a
 //   day back), so a pickup done without signal still shows when it really happened.
@@ -11,7 +11,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
 
-const KEYS = { day: 'ecollect-day', outbox: 'ecollect-outbox', failed: 'ecollect-outbox-failed' };
+const KEYS = { day: 'ecollect-day', outbox: 'ecollect-outbox', failed: 'ecollect-outbox-failed', emergencies: 'ecollect-emergencies' };
 
 /** True when an error means "no connection" (as opposed to the server saying no). */
 export function isOffline(err) {
@@ -32,6 +32,21 @@ export async function clearFailed() { await write(KEYS.failed, []); setStatus({ 
 // ---------- the day ----------
 export async function saveDay(day) { if (day?.date) await write(KEYS.day, { ...day, cachedAt: Date.now() }); }
 export async function cachedDay() { return read(KEYS.day, null); }
+export async function saveEmergencies(list) { await write(KEYS.emergencies, list); }
+export async function cachedEmergencies() { return read(KEYS.emergencies, null); }
+
+/** Emergency pickups with the status taps not yet sent shown on them. */
+export async function emergenciesWithPending(list) {
+  if (!list) return list;
+  const box = await read(KEYS.outbox, []);
+  const out = list.map((e) => ({ ...e }));
+  for (const a of box) {
+    if (a.kind !== 'emergency') continue;
+    const e = out.find((x) => x.id === a.id);
+    if (e) Object.assign(e, { status: a.status, pending: true, completed_at: a.status === 'Completed' ? (e.completed_at ?? a.at) : null });
+  }
+  return out;
+}
 
 // ---------- sending one action ----------
 /** Calls the server for one saved action. Throws on failure. Returns the updated day when the server sends one. */
@@ -153,6 +168,6 @@ export async function withPending(day) {
 
 /** Forget everything on log out (another collector may sign in on this phone). */
 export async function clearOffline() {
-  try { await AsyncStorage.multiRemove([KEYS.day, KEYS.outbox, KEYS.failed]); } catch { /* ignore */ }
+  try { await AsyncStorage.multiRemove([KEYS.day, KEYS.outbox, KEYS.failed, KEYS.emergencies]); } catch { /* ignore */ }
   setStatus({ pending: 0, failed: [], sending: false });
 }

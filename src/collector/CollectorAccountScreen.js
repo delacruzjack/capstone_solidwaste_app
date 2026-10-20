@@ -5,21 +5,12 @@ import { changePassword, getCollector, unregisterPushToken } from '../data/colle
 import { useAuth } from '../AuthContext';
 import { useApi } from '../hooks';
 import { Button, Card, ErrorBanner, Field, Screen, StateView } from '../components/ui';
-import { type } from '../theme';
+import { colors, type } from '../theme';
 import { useLocationShare } from './LocationShare';
-import { GpsPill } from './parts';
+import { IconCircle, ListGroup, ListRow } from './parts';
 import { clearOffline, subscribeOutbox } from './offline';
 import { clearArrivals } from './arrival';
 import { forgetPush } from './notify';
-
-function Row({ label, value }) {
-  return (
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 }}>
-      <Text style={type.small}>{label}</Text>
-      <Text style={[type.body, { flexShrink: 1, textAlign: 'right', marginLeft: 12, fontWeight: '600' }]}>{value}</Text>
-    </View>
-  );
-}
 
 export default function CollectorAccountScreen() {
   const { signOut, email } = useAuth();
@@ -64,20 +55,21 @@ export default function CollectorAccountScreen() {
 
   return (
     <Screen style={{ paddingTop: 12 }}>
-      <View style={{ alignItems: 'flex-end', marginBottom: 8 }}><GpsPill /></View>
       <StateView loading={loading} error={error} onRetry={reload} />
       {me && (
-        <Card>
-          <Text style={type.heading}>{`${me.first_name ?? ''} ${me.last_name ?? ''}`.trim()}</Text>
-          <Text style={[type.small, { marginBottom: 8 }]}>{me.email} · Garbage collector</Text>
-          <Row label="Truck" value={me.truck?.plate_number || 'Not assigned'} />
-          <Row label="Home zone" value={me.route?.zone_name || 'Not set'} />
-        </Card>
+        <ListGroup>
+          <ListRow icon="person-outline" title={`${me.first_name ?? ''} ${me.last_name ?? ''}`.trim()} sub={`${me.email} · Garbage collector`} />
+          <ListRow icon="bus-outline" iconColor={colors.blue} iconBg={colors.blueLight} title={me.truck?.plate_number || 'Not assigned'} sub="Truck" />
+          <ListRow icon="map-outline" iconColor={colors.amber} iconBg={colors.amberLight} title={me.route?.zone_name || 'Not set'} sub="Home zone" />
+        </ListGroup>
       )}
-      <Text style={[type.small, { marginBottom: 16 }]}>To change your truck, zone or schedule, contact your Barangay Admin.</Text>
+      <Text style={[type.small, { marginBottom: 16, marginHorizontal: 4 }]}>To change your truck, zone or schedule, contact your Barangay Admin.</Text>
 
       <Card>
-        <Text style={[type.heading, { marginBottom: 10 }]}>Change password</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+          <IconCircle name="key-outline" size={38} color={colors.amber} bg={colors.amberLight} />
+          <Text style={[type.heading, { marginLeft: 10 }]}>Change password</Text>
+        </View>
         <Field label="Current password" value={pw.current} onChangeText={(v) => setPw({ ...pw, current: v })} secureTextEntry autoCapitalize="none" />
         <Field label="New password (at least 8 characters)" value={pw.next} onChangeText={(v) => setPw({ ...pw, next: v })} secureTextEntry autoCapitalize="none" />
         <Field label="New password again" value={pw.again} onChangeText={(v) => setPw({ ...pw, again: v })} secureTextEntry autoCapitalize="none" />
@@ -85,7 +77,7 @@ export default function CollectorAccountScreen() {
         <Button title="Change password" onPress={savePassword} loading={busy} />
       </Card>
 
-      <Button title="Log out" variant="ghost" onPress={confirmLogout} />
+      <Button title="Log out" icon="log-out-outline" variant="dangerGhost" onPress={confirmLogout} style={{ marginTop: 4 }} />
     </Screen>
   );
 }

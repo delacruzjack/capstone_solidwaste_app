@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import { useAuth } from '../AuthContext';
 import { Button, ErrorBanner, Field, Screen } from '../components/ui';
 import { colors, type } from '../theme';
@@ -26,6 +26,7 @@ export default function LoginScreen({ navigation }) {
   return (
     <Screen style={{ paddingTop: 48 }}>
       <View style={{ marginBottom: 32, marginTop: 24 }}>
+        <Image source={require('../../assets/images/logo-mark.png')} style={{ width: 64, height: 64, borderRadius: 16, marginBottom: 14 }} accessibilityIgnoresInvertColors />
         <Text style={{ fontSize: 40, fontWeight: '800', color: colors.primary, letterSpacing: -1 }}>ECollect</Text>
         <Text style={[type.body, { color: colors.muted, marginTop: 6 }]}>
           Waste pickup schedules and live truck tracking for your barangay.

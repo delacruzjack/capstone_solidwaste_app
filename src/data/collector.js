@@ -1,7 +1,7 @@
 // Collector app data. Everything goes to Supabase; the server clock decides "today".
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, must, explain, currentUserId } from '../lib/supabase';
-import { cachedDay, flushOutbox, isOffline, runAction, saveDay, withPending } from '../collector/offline';
+import { cachedDay, cachedEmergencies, emergenciesWithPending, flushOutbox, isOffline, runAction, saveDay, saveEmergencies, withPending } from '../collector/offline';
 import { parsePath } from '../utils/route';
 
 const ME_KEY = 'ecollect-collector';
@@ -183,4 +183,44 @@ export async function registerPushToken(token) {
 }
 export async function unregisterPushToken(token) {
   await supabase.rpc('collector_unregister_push', { p_token: token });
+}
+
+/** Philippine date as YYYY-MM-DD, n days from today. */
+const phDate = (n = 0) => new Date(Date.now() + 8 * 3600000 + n * 86400000).toISOString().slice(0, 10);
+
+/**
+ * My emergency pickups: everything still open (any date) plus those finished or cancelled in the last 14 days.
+ * [{ id, date, start, end, location, reason, notes, lat, lng, zone, status, created_at, completed_at, updated_at }]
+ * Without signal: the list last loaded, with saved taps shown on it (offline: true on the result).
+ */
+export async function getEmergencies() {
+  await flushOutbox().catch(() => null);
+  const id = (await cachedCollectorId()) ?? (await getCollector()).garbage_collector_id;
+  const res = await supabase.from('emergency_collection')
+    .select('emergency_collection_id, collection_date, start_time, end_time, location_text, reason, notes, latitude, longitude, status, created_at, updated_at, completed_at, route(zone_name)')
+    .eq('garbage_collector_id', id)
+    .or(`status.in.(Scheduled,"In progress"),collection_date.gte.${phDate(-14)}`)
+    .order('collection_date', { ascending: true }).order('start_time', { ascending: true });
+  if (res.error) {
+    if (!isOffline(res.error)) throw new Error(explain(res.error));
+    const cached = await cachedEmergencies();
+    if (!cached) throw new Error('No signal, and the emergency pickups have not been loaded on this phone yet.');
+    return { list: await emergenciesWithPending(cached), offline: true, today: phDate() };
+  }
+  const list = res.data.map((e) => ({
+    id: e.emergency_collection_id, date: e.collection_date, start: e.start_time, end: e.end_time, location: e.location_text,
+    reason: e.reason, notes: e.notes, lat: e.latitude != null ? Number(e.latitude) : null, lng: e.longitude != null ? Number(e.longitude) : null,
+    zone: e.route?.zone_name ?? null, status: e.status, created_at: e.created_at, updated_at: e.updated_at, completed_at: e.completed_at,
+  }));
+  await saveEmergencies(list);
+  return { list: await emergenciesWithPending(list), offline: false, today: phDate() };
+}
+
+/** Number of my emergency pickups that need action now (today or overdue, not finished). */
+export async function countOpenEmergencies() {
+  const id = (await cachedCollectorId()) ?? (await getCollector().catch(() => null))?.garbage_collector_id;
+  if (!id) return null;
+  const { count, error } = await supabase.from('emergency_collection').select('emergency_collection_id', { count: 'exact', head: true })
+    .eq('garbage_collector_id', id).in('status', ['Scheduled', 'In progress']).lte('collection_date', phDate());
+  return error ? null : count ?? 0;
 }

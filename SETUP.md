@@ -96,7 +96,16 @@ eas login                   # free Expo account
 eas build -p android --profile preview
 ```
 
-When it finishes, open the link it prints on the phone and install the APK. The `.env` values are included in the build, so fill in `.env` before building. On first "Start sharing", allow location **"All the time"** so the truck stays on the map when the phone is locked; Android then shows an "ECollect is sharing the truck's location" notification while it runs.
+Before the first build, put the two public values in `eas.json`, because EAS does not upload `.env` (it is git-ignored). Under `"preview"`, add:
+
+```
+"env": {
+  "EXPO_PUBLIC_SUPABASE_URL": "https://YOUR-PROJECT.supabase.co",
+  "EXPO_PUBLIC_SUPABASE_ANON_KEY": "your anon / publishable key"
+}
+```
+
+Use the anon key, never the service_role key. When the build finishes, open the link it prints on the phone and install the APK. On first "Start sharing", allow location **"All the time"** so the truck stays on the map when the phone is locked; Android then shows an "ECollect is sharing the truck's location" notification while it runs.
 
 What the collector sees:
 - **Today:**
@@ -107,8 +116,9 @@ What the collector sees:
   - A zone counts as collected when every stop serving it that day is done.
 - **Arrival and standby:** while location sharing is on, reaching a stop (within 50 m) shows "You're at …" and starts the standby countdown; a reminder comes when the standby time is over. The collector can also start the timer by hand. Nothing is marked done automatically.
 - **No signal:** the day stays on the phone, and taps are saved and sent with the time they were tapped once the signal is back.
-- **Week, Map** (Poblacion only, no Google key; the truck is a top-view truck turned to its direction of travel), **Report** (a problem from the field).
-- **More:** Announcements, My history (last 14 days), Account (change password, log out).
+- **Emergency:** every emergency pickup assigned to the collector: needs action (today and overdue), coming up (later days) and the last 14 days done or cancelled, each with details, directions and progress. The tab shows a red badge with the number that need action, and an emergency notification opens it.
+- **Week, Map** (Poblacion only, no Google key; the truck is a top-view truck turned to its direction of travel; open emergency pickups are red pins).
+- **More:** Report a problem (also a quick link on Today), Announcements, My history (last 14 days), Account (change password, log out).
 - GPS stops by itself one hour after the day's last stop.
 
 ### Notifications

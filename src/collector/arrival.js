@@ -44,7 +44,7 @@ export async function startStandby(stop, date, { auto = false } = {}) {
   let endId = null;
   if (minutes > 0) {
     endId = await scheduleAt(new Date(at + minutes * 60000), 'Standby time is over',
-      `${stop.name}: tap "Done at this stop", or "Couldn't collect" if residents did not come.`, { kind: 'standby', id: stop.id });
+      `${stop.name}: tap "Done", or "Not collected" if residents did not come.`, { kind: 'standby', id: stop.id });
   }
   arrivals.list[stop.id] = { at, standby: minutes, endId, auto };
   await save();

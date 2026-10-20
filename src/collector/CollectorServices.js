@@ -1,22 +1,24 @@
 // Things that run for the whole time a collector is signed in (not tied to one screen):
-// sending taps saved offline, notifications from the barangay, unread announcements.
+// sending taps saved offline, notifications from the barangay, unread announcements, open emergency pickups.
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabase';
-import { registerPushToken } from '../data/collector';
+import { countOpenEmergencies, registerPushToken } from '../data/collector';
 import { flushOutbox } from './offline';
 import { onNotificationTap, registerForPush } from './notify';
 import { navigationRef } from '../navigation/navRef';
 
-const Ctx = createContext({ unread: 0, pushNote: '', markRead: () => {}, retryPush: () => {} });
+const Ctx = createContext({ unread: 0, openEmergencies: 0, pushNote: '', markRead: () => {}, retryPush: () => {} });
 export const useCollectorServices = () => useContext(Ctx);
 const SEEN_KEY = 'ecollect-announcements-seen';
 
 function go(data) {
   if (!navigationRef.isReady()) return;
   if (data?.kind === 'announcement') navigationRef.navigate('CollectorTabs', { screen: 'More', params: { screen: 'Announcements' } });
-  else navigationRef.navigate('CollectorTabs', { screen: 'Today' });
+  else if (data?.kind === 'emergency' && data.id) {
+    navigationRef.navigate('CollectorTabs', { screen: 'Emergency', params: { screen: 'EmergencyDetail', params: { id: Number(data.id) }, initial: false } });
+  } else navigationRef.navigate('CollectorTabs', { screen: 'Today' });
 }
 
 /** Announcements newer than the last one opened on this phone (null when offline). */
@@ -34,6 +36,7 @@ async function unreadCount() {
 
 export function CollectorServicesProvider({ children }) {
   const [unread, setUnread] = useState(0);
+  const [openEmergencies, setOpenEmergencies] = useState(0);
   const [pushNote, setPushNote] = useState('');
 
   // Taps saved without signal: send them every 30 seconds and when the app comes back.
@@ -56,9 +59,12 @@ export function CollectorServicesProvider({ children }) {
   // Unread announcements: newer than the last one opened on this phone.
   useEffect(() => {
     let alive = true;
-    const countUnread = () => unreadCount().then((n) => { if (alive && n !== null) setUnread(n); });
+    const countUnread = () => {
+      unreadCount().then((n) => { if (alive && n !== null) setUnread(n); });
+      countOpenEmergencies().then((n) => { if (alive && n !== null) setOpenEmergencies(n); }).catch(() => {});
+    };
     countUnread();
-    const id = setInterval(countUnread, 120000);
+    const id = setInterval(countUnread, 60000);
     const sub = AppState.addEventListener('change', (s) => { if (s === 'active') countUnread(); });
     return () => { alive = false; clearInterval(id); sub.remove(); };
   }, []);
@@ -67,6 +73,6 @@ export function CollectorServicesProvider({ children }) {
     setUnread(0);
   }, []);
 
-  const value = useMemo(() => ({ unread, pushNote, markRead, retryPush }), [unread, pushNote, markRead, retryPush]);
+  const value = useMemo(() => ({ unread, openEmergencies, pushNote, markRead, retryPush }), [unread, openEmergencies, pushNote, markRead, retryPush]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

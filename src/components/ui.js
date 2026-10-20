@@ -4,7 +4,8 @@ import {
   ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, radius, type } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, radius, shadow, type } from '../theme';
 
 /** Page wrapper: safe area, optional pull-to-refresh, keyboard friendly. */
 export function Screen({ children, refreshing, onRefresh, scroll = true, style }) {
@@ -19,6 +20,8 @@ export function Screen({ children, refreshing, onRefresh, scroll = true, style }
       style={{ flex: 1, backgroundColor: colors.bg }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      {/* keeps scrolled content from showing under the clock and notch */}
+      <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: insets.top, backgroundColor: colors.bg, zIndex: 10 }} />
       <ScrollView
         contentContainerStyle={[pad, style]}
         keyboardShouldPersistTaps="handled"
@@ -43,28 +46,44 @@ export function Card({ children, style, onPress }) {
   );
 }
 
-export function Button({ title, onPress, loading, variant = 'primary', disabled, style }) {
-  const isPrimary = variant === 'primary';
+/**
+ * variant: 'primary' (filled green) | 'ghost' (green outline) | 'danger' (filled red) | 'dangerGhost' (red outline) | 'soft' (light green)
+ * icon: an Ionicons name shown before the title.
+ */
+export function Button({ title, onPress, loading, variant = 'primary', disabled, style, icon }) {
+  const v = VARIANTS[variant] ?? VARIANTS.primary;
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!(disabled || loading), busy: !!loading }}
       style={({ pressed }) => [
         styles.btn,
-        isPrimary ? styles.btnPrimary : styles.btnGhost,
+        { backgroundColor: v.bg, borderColor: v.border, borderWidth: v.border ? 1.5 : 0 },
         (disabled || loading) && { opacity: 0.55 },
         pressed && { opacity: 0.85 },
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={isPrimary ? colors.onPrimary : colors.primary} />
+        <ActivityIndicator color={v.fg} />
       ) : (
-        <Text style={[styles.btnText, { color: isPrimary ? colors.onPrimary : colors.primary }]}>{title}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          {icon ? <Ionicons name={icon} size={20} color={v.fg} style={{ marginRight: 8 }} /> : null}
+          <Text style={[styles.btnText, { color: v.fg }]} numberOfLines={1}>{title}</Text>
+        </View>
       )}
     </Pressable>
   );
 }
+const VARIANTS = {
+  primary: { bg: colors.primary, fg: colors.onPrimary },
+  ghost: { bg: 'transparent', fg: colors.primary, border: colors.primary },
+  danger: { bg: colors.danger, fg: '#fff' },
+  dangerGhost: { bg: colors.surface, fg: colors.danger, border: '#e7b3a9' },
+  soft: { bg: colors.primaryLight, fg: colors.primaryDark },
+};
 
 export function Field({ label, error, style, ...props }) {
   return (
@@ -138,15 +157,14 @@ export function ScreenTitle({ children, sub }) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: 16,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.line,
     marginBottom: 12,
+    ...shadow.card,
   },
-  btn: { borderRadius: radius.md, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', minHeight: 50 },
-  btnPrimary: { backgroundColor: colors.primary },
-  btnGhost: { borderWidth: 1.5, borderColor: colors.primary, backgroundColor: 'transparent' },
+  btn: { borderRadius: radius.md, paddingVertical: 14, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', minHeight: 50 },
   btnText: { fontSize: 16, fontWeight: '700' },
   input: {
     backgroundColor: colors.surface,

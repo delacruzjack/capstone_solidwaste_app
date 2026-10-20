@@ -1,9 +1,10 @@
-// Bottom sheets for a truck stop: "How full is the truck?" and "Couldn't collect".
+// Bottom sheets for a truck stop: "How full is the truck?" and "Not collected".
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { Button, Chip, ErrorBanner, Field } from '../components/ui';
+import { Button, ErrorBanner, Field } from '../components/ui';
+import { ChoiceTile } from './parts';
 import { colors, radius, type } from '../theme';
 
 export function BottomSheet({ visible, onClose, title, sub, children }) {
@@ -43,8 +44,8 @@ export const loadText = (level) => ({ 1: 'Truck about ¼ full', 2: 'Truck about 
 function TruckLevel({ level, selected }) {
   const fill = selected ? colors.onPrimary : colors.primary;
   return (
-    <View style={{ width: 34, height: 22, borderRadius: 4, borderWidth: 2, borderColor: fill, overflow: 'hidden', justifyContent: 'flex-end', marginBottom: 6 }}>
-      <View style={{ height: `${level * 25}%`, backgroundColor: fill, opacity: 0.85 }} />
+    <View style={{ width: 34, height: 24, borderRadius: 4, borderWidth: 2, borderColor: fill, overflow: 'hidden', marginBottom: 6 }}>
+      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: `${level * 25}%`, backgroundColor: fill, opacity: 0.85 }} />
     </View>
   );
 }
@@ -68,7 +69,7 @@ export function LoadSheet({ stop, visible, onClose, onPick }) {
           );
         })}
       </View>
-      <Button title={level ? 'Save: done at this stop' : 'Choose how full, or skip'} disabled={!level} onPress={() => { onPick(level); setLevel(null); }} style={{ minHeight: 54 }} />
+      <Button title={level ? 'Save: done at this stop' : 'Choose how full, or skip'} icon={level ? 'checkmark-circle-outline' : undefined} disabled={!level} onPress={() => { onPick(level); setLevel(null); }} style={{ minHeight: 54 }} />
       <Pressable onPress={() => { onPick(null); setLevel(null); }} accessibilityRole="button" style={{ paddingVertical: 14, alignItems: 'center' }}>
         <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 16 }}>Skip, just mark done</Text>
       </Pressable>
@@ -76,7 +77,7 @@ export function LoadSheet({ stop, visible, onClose, onPick }) {
   );
 }
 
-/** "Couldn't collect" → why (sent to the Barangay Admin as a field report too). */
+/** "Not collected" → why (sent to the Barangay Admin as a field report too). */
 export function MissedSheet({ stop, reasons, visible, onClose, onSend }) {
   const [reason, setReason] = useState(null);
   const [note, setNote] = useState('');
@@ -89,15 +90,15 @@ export function MissedSheet({ stop, reasons, visible, onClose, onSend }) {
     setReason(null); setNote(''); setErr('');
   };
   return (
-    <BottomSheet visible={visible} onClose={close} title={`Couldn’t collect at ${stop?.name ?? ''}`} sub="Your Barangay Admin sees this right away.">
+    <BottomSheet visible={visible} onClose={close} title={`Not collected at ${stop?.name ?? ''}`} sub="Why couldn’t you collect here? Your Barangay Admin sees this right away.">
       <Text style={[type.label, { marginBottom: 8 }]}>Why?</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 6 }}>
-        {(reasons ?? []).map((r) => <Chip key={r} label={r} selected={reason === r} onPress={() => setReason(r)} />)}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 6 }}>
+        {(reasons ?? []).map((r) => <ChoiceTile key={r} label={r} tone="danger" selected={reason === r} onPress={() => setReason(r)} />)}
       </View>
       <Field label={reason === 'Other' ? 'Note (needed)' : 'Note (optional)'} value={note} onChangeText={setNote} maxLength={500}
         placeholder="For example: road works, truck cannot pass" multiline style={{ minHeight: 70 }} />
       <ErrorBanner message={err} />
-      <Button title="Send" onPress={send} style={{ minHeight: 54, backgroundColor: colors.danger }} />
+      <Button title="Send to the Barangay Admin" icon="paper-plane-outline" variant="danger" onPress={send} style={{ minHeight: 54 }} />
     </BottomSheet>
   );
 }
